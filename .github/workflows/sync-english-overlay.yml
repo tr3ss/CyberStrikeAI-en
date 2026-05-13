@@ -1,0 +1,88 @@
+name: Sync English overlay
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout English branch
+        uses: actions/checkout@v4
+        with:
+          ref: english-overlay
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge official upstream
+        run: |
+          git remote add upstream https://github.com/Ed1s0nZ/CyberStrikeAI.git
+          git fetch upstream main
+          git switch -c automation/sync-english-overlay
+          git merge --no-edit upstream/main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Refresh English overlay
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TRANSLATION_API_KEY: ${{ secrets.TRANSLATION_API_KEY }}
+          TRANSLATION_BASE_URL: ${{ vars.TRANSLATION_BASE_URL || 'https://openrouter.ai/api/v1' }}
+          TRANSLATION_MODEL: ${{ vars.TRANSLATION_MODEL || 'openrouter/free' }}
+          OPENROUTER_SITE_URL: ${{ github.server_url }}/${{ github.repository }}
+          OPENROUTER_APP_NAME: CyberStrikeAI English overlay sync
+        run: node scripts/translate-overlay.mjs
+
+      - name: Validate JSON
+        run: jq empty web/static/i18n/en-US.json web/static/i18n/zh-CN.json
+
+      - name: Validate JavaScript
+        run: |
+          find web/static/js -name '*.js' -print0 | xargs -0 -n 1 node --check
+
+      - name: Validate agent metadata
+        env:
+          GOCACHE: /tmp/go-build-cache
+          GOMODCACHE: /tmp/go-mod-cache
+        run: go test ./internal/agents
+
+      - name: Commit overlay updates
+        run: |
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            git add agents web/static scripts .github
+            git commit -m "Sync upstream and refresh English overlay"
+          fi
+
+      - name: Open sync pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet origin/english-overlay...HEAD; then
+            echo "No upstream or translation changes to publish."
+            exit 0
+          fi
+
+          git push --force-with-lease origin automation/sync-english-overlay
+
+          gh pr create \
+            --base english-overlay \
+            --head automation/sync-english-overlay \
+            --title "Sync upstream and refresh English overlay" \
+            --body "Automated sync from Ed1s0nZ/CyberStrikeAI plus English overlay refresh." \
+          || gh pr edit automation/sync-english-overlay \
+            --title "Sync upstream and refresh English overlay" \
+            --body "Automated sync from Ed1s0nZ/CyberStrikeAI plus English overlay refresh."
