@@ -186,14 +186,14 @@ function wsUpdateRoleSelectorDisplay() {
     var cur = (typeof getCurrentRole === 'function') ? getCurrentRole() : (localStorage.getItem('currentRole') || '');
     if (!cur) {
         iconEl.textContent = '\ud83d\udd35';
-        textEl.textContent = (typeof window.t === 'function' ? window.t('chat.defaultRole') : '') || '默认';
+        textEl.textContent = wsRoleDisplayName('');
         return;
     }
     if (wsRolesCache) {
         for (var i = 0; i < wsRolesCache.length; i++) {
             if (wsRolesCache[i].name === cur) {
                 iconEl.textContent = wsRolesCache[i].icon || '\ud83d\udd35';
-                textEl.textContent = cur;
+                textEl.textContent = wsRoleDisplayName(wsRolesCache[i]);
                 return;
             }
         }
@@ -212,9 +212,9 @@ function wsRenderRoleList() {
     html += '<button type="button" class="role-selection-item-main' + defSelected + '" onclick="wsSelectRole(\'\')">' +
         '<div class="role-selection-item-icon-main">\ud83d\udd35</div>' +
         '<div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' +
-        (wsTOr('chat.defaultRole', '默认')) +
+        wsRoleDisplayName('') +
         '</div><div class="role-selection-item-description-main">' +
-        (wsTOr('roles.defaultRoleDescription', '默认角色，不额外携带用户提示词，使用所有工具')) +
+        (wsTOr('roles.defaultRoleDescription', 'Default role, no extra user prompt, uses all tools')) +
         '</div></div>' +
         (defSelected ? '<div class="role-selection-checkmark-main">\u2713</div>' : '') +
         '</button>';
@@ -226,8 +226,8 @@ function wsRenderRoleList() {
             var sel = (r.name === cur) ? ' selected' : '';
             html += '<button type="button" class="role-selection-item-main' + sel + '" onclick="wsSelectRole(\'' + r.name.replace(/'/g, "\\'") + '\')">' +
                 '<div class="role-selection-item-icon-main">' + (r.icon || '\ud83d\udd35') + '</div>' +
-                '<div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + r.name + '</div>' +
-                '<div class="role-selection-item-description-main">' + (r.description || '').substring(0, 60) + '</div></div>' +
+                '<div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + escapeHtml(wsRoleDisplayName(r)) + '</div>' +
+                '<div class="role-selection-item-description-main">' + escapeHtml(wsRoleDisplayDescription(r).substring(0, 80)) + '</div></div>' +
                 (sel ? '<div class="role-selection-checkmark-main">\u2713</div>' : '') +
                 '</button>';
         }
@@ -423,133 +423,138 @@ function refreshWebshellConnectionsFromServer() {
 // 使用 wsT 避免与全局 window.t 冲突导致无限递归
 function wsT(key) {
     var globalT = typeof window !== 'undefined' ? window.t : null;
-    if (typeof globalT === 'function' && globalT !== wsT) return globalT(key);
+    if (typeof globalT === 'function' && globalT !== wsT) {
+        var translated = globalT(key);
+        if (typeof translated === 'string' && translated && translated !== key) return translated;
+    }
     var fallback = {
-        'webshell.title': 'WebShell 管理',
-        'webshell.addConnection': '添加连接',
-        'webshell.cmdParam': '命令参数名',
-        'webshell.cmdParamPlaceholder': '不填默认为 cmd，如填 xxx 则请求为 xxx=命令',
-        'webshell.encoding': '响应编码',
-        'webshell.encodingAuto': '自动检测',
+        'webshell.title': 'WebShell Management',
+        'webshell.addConnection': 'Add connection',
+        'webshell.cmdParam': 'Command parameter name',
+        'webshell.cmdParamPlaceholder': 'Leave empty for cmd; if set to xxx, requests use xxx=command',
+        'webshell.encoding': 'Response encoding',
+        'webshell.encodingAuto': 'Auto detect',
         'webshell.encodingUtf8': 'UTF-8',
-        'webshell.encodingGbk': 'GBK（中文 Windows）',
+        'webshell.encodingGbk': 'GBK (Chinese Windows)',
         'webshell.encodingGb18030': 'GB18030',
-        'webshell.encodingHint': '中文 Windows 目标若出现乱码，请切换为 GBK 或 GB18030',
-        'webshell.os': '目标系统',
-        'webshell.osAuto': '自动（按 Shell 类型推断）',
+        'webshell.encodingHint': 'If a Chinese Windows target shows garbled text, switch to GBK or GB18030',
+        'webshell.os': 'Target OS',
+        'webshell.osAuto': 'Auto (infer from shell type)',
         'webshell.osLinux': 'Linux / Unix',
         'webshell.osWindows': 'Windows',
-        'webshell.osHint': '决定文件管理/上传使用 Linux 还是 Windows 命令；PHP/JSP 跑在 Windows 上请选 Windows',
-        'webshell.connections': '连接列表',
-        'webshell.noConnections': '暂无连接，请点击「添加连接」',
-        'webshell.selectOrAdd': '请从左侧选择连接，或添加新的 WebShell 连接',
-        'webshell.deleteConfirm': '确定要删除该连接吗？',
-        'webshell.editConnection': '编辑',
-        'webshell.editConnectionTitle': '编辑连接',
-        'webshell.tabTerminal': '虚拟终端',
-        'webshell.tabFileManager': '文件管理',
-        'webshell.tabAiAssistant': 'AI 助手',
-        'webshell.tabDbManager': '数据库管理',
-        'webshell.tabMemo': '备忘录',
-        'webshell.dbType': '数据库类型',
-        'webshell.dbHost': '主机',
-        'webshell.dbPort': '端口',
-        'webshell.dbUsername': '用户名',
-        'webshell.dbPassword': '密码',
-        'webshell.dbName': '数据库名',
-        'webshell.dbSqlitePath': 'SQLite 文件路径',
-        'webshell.dbSqlPlaceholder': '输入 SQL，例如：SELECT version();',
-        'webshell.dbRunSql': '执行 SQL',
-        'webshell.dbTest': '测试连接',
-        'webshell.dbOutput': '执行输出',
-        'webshell.dbNoConn': '请先选择 WebShell 连接',
-        'webshell.dbSqlRequired': '请输入 SQL',
-        'webshell.dbRunning': '数据库命令执行中，请稍候',
-        'webshell.dbCliHint': '如果提示命令不存在，请先在目标主机安装对应客户端（mysql/psql/sqlite3/sqlcmd）',
-        'webshell.dbExecFailed': '数据库执行失败',
-        'webshell.dbSchema': '数据库结构',
-        'webshell.dbLoadSchema': '加载结构',
-        'webshell.dbNoSchema': '暂无数据库结构，请先加载',
-        'webshell.dbSelectTableHint': '点击表名可展开列信息并生成查询 SQL',
-        'webshell.dbNoColumns': '暂无列信息',
-        'webshell.dbResultTable': '结果表格',
-        'webshell.dbClearSql': '清空 SQL',
-        'webshell.dbTemplateSql': '示例 SQL',
-        'webshell.dbRows': '行',
-        'webshell.dbColumns': '列',
-        'webshell.dbSchemaFailed': '加载数据库结构失败',
-        'webshell.dbSchemaLoaded': '结构加载完成',
-        'webshell.dbAddProfile': '新增连接',
-        'webshell.dbExecSuccess': 'SQL 执行成功',
-        'webshell.dbNoOutput': '执行完成（无输出）',
-        'webshell.dbRenameProfile': '重命名',
-        'webshell.dbDeleteProfile': '删除连接',
-        'webshell.dbDeleteProfileConfirm': '确定删除该数据库连接配置吗？',
-        'webshell.dbProfileNamePrompt': '请输入连接名称',
-        'webshell.dbProfileName': '连接名称',
-        'webshell.dbProfiles': '数据库连接',
-        'webshell.aiSystemReadyMessage': '系统已就绪。请输入您的测试需求，系统将自动执行相应的安全测试。',
-        'webshell.aiPlaceholder': '例如：列出当前目录下的文件',
-        'webshell.aiSend': '发送',
-        'webshell.aiMemo': '备忘录',
-        'webshell.aiMemoPlaceholder': '记录关键命令、测试思路、复现步骤...',
-        'webshell.aiMemoClear': '清空',
-        'webshell.aiMemoSaving': '保存中...',
-        'webshell.aiMemoSaved': '已保存到本地',
-        'webshell.terminalWelcome': 'WebShell 虚拟终端 — 输入命令后按回车执行（Ctrl+L 清屏）',
-        'webshell.quickCommands': '快捷命令',
-        'webshell.downloadFile': '下载',
-        'webshell.filePath': '当前路径',
-        'webshell.listDir': '列出目录',
-        'webshell.readFile': '读取',
-        'webshell.editFile': '编辑',
-        'webshell.deleteFile': '删除',
-        'webshell.saveFile': '保存',
-        'webshell.cancelEdit': '取消',
-        'webshell.parentDir': '上级目录',
-        'webshell.execError': '执行失败',
-        'webshell.testConnectivity': '测试连通性',
-        'webshell.testSuccess': '连通性正常，Shell 可访问',
-        'webshell.testFailed': '连通性测试失败',
-        'webshell.testNoExpectedOutput': 'Shell 返回了响应但未得到预期输出，请检查连接密码与命令参数名',
-        'webshell.clearScreen': '清屏',
-        'webshell.copyTerminalLog': '复制日志',
-        'webshell.terminalIdle': '空闲',
-        'webshell.terminalRunning': '执行中',
-        'webshell.terminalCopyOk': '日志已复制',
-        'webshell.terminalCopyFail': '复制失败',
-        'webshell.terminalNewWindow': '新终端',
-        'webshell.terminalWindowPrefix': '终端',
-        'webshell.running': '执行中…',
-        'webshell.waitFinish': '请等待当前命令执行完成',
-        'webshell.newDir': '新建目录',
-        'webshell.rename': '重命名',
-        'webshell.upload': '上传',
-        'webshell.newFile': '新建文件',
-        'webshell.filterPlaceholder': '过滤文件名',
-        'webshell.batchDelete': '批量删除',
-        'webshell.batchDownload': '批量下载',
-        'webshell.moreActions': '更多操作',
-        'webshell.refresh': '刷新',
-        'webshell.selectAll': '全选',
-        'webshell.breadcrumbHome': '根',
-        'webshell.dirTree': '目录列表',
-        'webshell.searchPlaceholder': '搜索连接...',
-        'webshell.noMatchConnections': '暂无匹配连接',
-        'webshell.batchProbe': '一键批量探活',
-        'webshell.probeRunning': '探活中',
-        'webshell.probeOnline': '在线',
-        'webshell.probeOffline': '离线',
-        'webshell.probeNoConnections': '暂无可探活连接',
-        'webshell.back': '返回',
-        'webshell.colModifiedAt': '修改时间',
-        'webshell.colPerms': '权限',
-        'webshell.colOwner': '所有者',
-        'webshell.colGroup': '用户组',
-        'webshell.colType': '类型',
-        'common.delete': '删除',
-        'common.refresh': '刷新',
-        'common.actions': '操作'
+        'webshell.osHint': 'Controls whether file management/upload uses Linux or Windows commands; choose Windows when PHP/JSP runs on Windows',
+        'webshell.connections': 'Connections',
+        'webshell.noConnections': 'No connections yet. Click Add connection.',
+        'webshell.selectOrAdd': 'Select a connection on the left, or add a new WebShell connection',
+        'webshell.deleteConfirm': 'Delete this connection?',
+        'webshell.editConnection': 'Edit',
+        'webshell.editConnectionTitle': 'Edit connection',
+        'webshell.tabTerminal': 'Terminal',
+        'webshell.tabFileManager': 'File manager',
+        'webshell.tabAiAssistant': 'AI assistant',
+        'webshell.tabDbManager': 'Database manager',
+        'webshell.tabMemo': 'Memo',
+        'webshell.dbType': 'Database type',
+        'webshell.dbHost': 'Host',
+        'webshell.dbPort': 'Port',
+        'webshell.dbUsername': 'Username',
+        'webshell.dbPassword': 'Password',
+        'webshell.dbName': 'Database name',
+        'webshell.dbSqlitePath': 'SQLite file path',
+        'webshell.dbSqlPlaceholder': 'Enter SQL, for example: SELECT version();',
+        'webshell.dbRunSql': 'Run SQL',
+        'webshell.dbTest': 'Test connection',
+        'webshell.dbOutput': 'Output',
+        'webshell.dbNoConn': 'Select a WebShell connection first',
+        'webshell.dbSqlRequired': 'Enter SQL',
+        'webshell.dbRunning': 'Database command is running, please wait',
+        'webshell.dbCliHint': 'If command not found appears, install mysql/psql/sqlite3/sqlcmd on the target host first',
+        'webshell.dbExecFailed': 'Database execution failed',
+        'webshell.dbSchema': 'Database schema',
+        'webshell.dbLoadSchema': 'Load schema',
+        'webshell.dbNoSchema': 'No schema yet. Load it first.',
+        'webshell.dbSelectTableHint': 'Click a table to expand columns and generate SQL',
+        'webshell.dbNoColumns': 'No column details',
+        'webshell.dbResultTable': 'Result table',
+        'webshell.dbClearSql': 'Clear SQL',
+        'webshell.dbTemplateSql': 'Example SQL',
+        'webshell.dbRows': 'rows',
+        'webshell.dbColumns': 'columns',
+        'webshell.dbSchemaFailed': 'Failed to load database schema',
+        'webshell.dbSchemaLoaded': 'Schema loaded',
+        'webshell.dbAddProfile': 'Add connection',
+        'webshell.dbExecSuccess': 'SQL executed successfully',
+        'webshell.dbNoOutput': 'Execution completed (no output)',
+        'webshell.dbRenameProfile': 'Rename',
+        'webshell.dbDeleteProfile': 'Delete connection',
+        'webshell.dbDeleteProfileConfirm': 'Delete this database connection profile?',
+        'webshell.dbProfileNamePrompt': 'Enter connection name',
+        'webshell.dbProfileName': 'Profile name',
+        'webshell.dbProfiles': 'Database connections',
+        'webshell.aiSystemReadyMessage': 'System is ready. Enter your test requirements and the system will execute the corresponding security tests.',
+        'webshell.aiPlaceholder': 'For example: list files in the current directory',
+        'webshell.aiSend': 'Send',
+        'webshell.aiMemo': 'Memo',
+        'webshell.aiMemoPlaceholder': 'Record key commands, testing ideas, and reproduction steps...',
+        'webshell.aiMemoClear': 'Clear',
+        'webshell.aiMemoSaving': 'Saving...',
+        'webshell.aiMemoSaved': 'Saved locally',
+        'webshell.terminalWelcome': 'WebShell terminal - enter a command and press Enter (Ctrl+L clears the screen)',
+        'webshell.quickCommands': 'Quick commands',
+        'webshell.downloadFile': 'Download',
+        'webshell.filePath': 'Current path',
+        'webshell.listDir': 'List directory',
+        'webshell.readFile': 'Read',
+        'webshell.editFile': 'Edit',
+        'webshell.deleteFile': 'Delete',
+        'webshell.saveFile': 'Save',
+        'webshell.cancelEdit': 'Cancel',
+        'webshell.parentDir': 'Parent directory',
+        'webshell.execError': 'Execution failed',
+        'webshell.testConnectivity': 'Test connectivity',
+        'webshell.testSuccess': 'Connectivity OK, shell is accessible',
+        'webshell.testFailed': 'Connectivity test failed',
+        'webshell.testNoExpectedOutput': 'The shell returned a response but not the expected output. Check the connection password and command parameter name.',
+        'webshell.clearScreen': 'Clear screen',
+        'webshell.copyTerminalLog': 'Copy log',
+        'webshell.terminalIdle': 'Idle',
+        'webshell.terminalRunning': 'Running',
+        'webshell.terminalCopyOk': 'Log copied',
+        'webshell.terminalCopyFail': 'Copy failed',
+        'webshell.terminalNewWindow': 'New terminal',
+        'webshell.terminalWindowPrefix': 'Terminal',
+        'webshell.running': 'Running...',
+        'webshell.waitFinish': 'Wait for the current command to finish',
+        'webshell.newDir': 'New directory',
+        'webshell.rename': 'Rename',
+        'webshell.upload': 'Upload',
+        'webshell.newFile': 'New file',
+        'webshell.filterPlaceholder': 'Filter filenames',
+        'webshell.batchDelete': 'Batch delete',
+        'webshell.batchDownload': 'Batch download',
+        'webshell.moreActions': 'More actions',
+        'webshell.refresh': 'Refresh',
+        'webshell.selectAll': 'Select all',
+        'webshell.breadcrumbHome': 'Root',
+        'webshell.dirTree': 'Directory tree',
+        'webshell.searchPlaceholder': 'Search connections...',
+        'webshell.noMatchConnections': 'No matching connections',
+        'webshell.batchProbe': 'Batch probe',
+        'webshell.probeRunning': 'Probing',
+        'webshell.probeOnline': 'Online',
+        'webshell.probeOffline': 'Offline',
+        'webshell.probeNoConnections': 'No connections to probe',
+        'webshell.back': 'Back',
+        'webshell.colModifiedAt': 'Modified',
+        'webshell.colPerms': 'Permissions',
+        'webshell.colOwner': 'Owner',
+        'webshell.colGroup': 'Group',
+        'webshell.colType': 'Type',
+        'common.delete': 'Delete',
+        'common.refresh': 'Refresh',
+        'common.actions': 'Actions',
+        'common.cancel': 'Cancel',
+        'common.save': 'Save'
     };
     return fallback[key] || key;
 }
@@ -558,6 +563,21 @@ function wsTOr(key, fallbackText) {
     var text = wsT(key);
     if (!text || text === key) return fallbackText;
     return text;
+}
+
+function wsRoleDisplayName(roleOrName) {
+    if (typeof roleDisplayName === 'function') return roleDisplayName(roleOrName);
+    var name = typeof roleOrName === 'string' ? roleOrName : ((roleOrName && roleOrName.name) || '');
+    if (!name || name === '默认') return wsTOr('chat.defaultRole', 'Default');
+    var key = 'roles.builtinNames.' + name;
+    return wsTOr(key, name);
+}
+
+function wsRoleDisplayDescription(role) {
+    if (typeof roleDisplayDescription === 'function') return roleDisplayDescription(role);
+    if (!role) return '';
+    var key = 'roles.builtinDescriptions.' + (role.name || '');
+    return wsTOr(key, role.description || '');
 }
 
 // 全局只绑定一次：清屏 = 销毁终端并重新创建，保证只出现一个 shell>（不依赖 xterm.clear()，避免某些环境下 clear 不生效或重复写入）
@@ -1930,11 +1950,11 @@ function selectWebshell(id, stateReady) {
         '<div class="ws-role-selector-wrapper">' +
         '<button type="button" class="role-selector-btn ws-role-selector-btn" id="ws-role-selector-btn" onclick="wsToggleRolePanel()">' +
         '<span id="ws-role-selector-icon" class="role-selector-icon">\ud83d\udd35</span>' +
-        '<span id="ws-role-selector-text" class="role-selector-text">' + (wsT('chat.defaultRole') || '默认') + '</span>' +
+        '<span id="ws-role-selector-text" class="role-selector-text">' + wsRoleDisplayName('') + '</span>' +
         '<svg class="role-selector-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
         '</button>' +
         '<div id="ws-role-selection-panel" class="role-selection-panel" style="display:none;">' +
-        '<div class="role-selection-panel-header"><h3 class="role-selection-panel-title">' + (wsT('chatGroup.rolePanelTitle') || '选择角色') + '</h3>' +
+        '<div class="role-selection-panel-header"><h3 class="role-selection-panel-title">' + (wsT('chatGroup.rolePanelTitle') || 'Select role') + '</h3>' +
         '<button type="button" class="role-selection-panel-close" onclick="wsCloseRolePanel()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
         '</div><div id="ws-role-selection-list" class="role-selection-list-main"></div></div>' +
         '</div>' +
@@ -1942,19 +1962,19 @@ function selectWebshell(id, stateReady) {
         '<div class="agent-mode-inner">' +
         '<button type="button" class="role-selector-btn agent-mode-btn" id="ws-agent-mode-btn" onclick="wsToggleAgentModePanel()">' +
         '<span id="ws-agent-mode-icon" class="role-selector-icon">\ud83e\udd16</span>' +
-        '<span id="ws-agent-mode-text" class="role-selector-text">' + (wsT('chat.agentModeReactNative') || '原生 ReAct') + '</span>' +
+        '<span id="ws-agent-mode-text" class="role-selector-text">' + (wsT('chat.agentModeReactNative') || 'Native ReAct') + '</span>' +
         '<svg class="role-selector-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
         '</button>' +
         '<div id="ws-agent-mode-panel" class="agent-mode-panel" style="display:none;" role="listbox">' +
-        '<div class="role-selection-panel-header agent-mode-panel-header"><h3 class="role-selection-panel-title">' + (wsT('chat.agentModePanelTitle') || '对话模式') + '</h3>' +
+        '<div class="role-selection-panel-header agent-mode-panel-header"><h3 class="role-selection-panel-title">' + (wsT('chat.agentModePanelTitle') || 'Chat mode') + '</h3>' +
         '<button type="button" class="role-selection-panel-close" onclick="wsCloseAgentModePanel()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
         '</div>' +
         '<div class="agent-mode-options">' +
-        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="react" role="option" onclick="wsSelectAgentMode(\'react\')"><div class="role-selection-item-icon-main">\ud83e\udd16</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModeReactNative') || '原生 ReAct 模式') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModeReactNativeHint') || '经典单代理 ReAct 与 MCP 工具') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="react">\u2713</div></button>' +
-        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="eino_single" role="option" onclick="wsSelectAgentMode(\'eino_single\')"><div class="role-selection-item-icon-main">\u26a1</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModeEinoSingle') || 'Eino 单代理（ADK）') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModeEinoSingleHint') || 'Eino ChatModelAgent + Runner') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="eino_single">\u2713</div></button>' +
-        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="deep" role="option" onclick="wsSelectAgentMode(\'deep\')"><div class="role-selection-item-icon-main">\ud83e\udde9</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModeDeep') || 'Deep（DeepAgent）') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModeDeepHint') || 'Eino DeepAgent，task 调度子代理') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="deep">\u2713</div></button>' +
-        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="plan_execute" role="option" onclick="wsSelectAgentMode(\'plan_execute\')"><div class="role-selection-item-icon-main">\ud83d\udccb</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModePlanExecuteLabel') || 'Plan-Execute') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModePlanExecuteHint') || '规划 → 执行 → 重规划') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="plan_execute">\u2713</div></button>' +
-        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="supervisor" role="option" onclick="wsSelectAgentMode(\'supervisor\')"><div class="role-selection-item-icon-main">\ud83c\udfaf</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModeSupervisorLabel') || 'Supervisor') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModeSupervisorHint') || '监督者协调，transfer 委派子代理') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="supervisor">\u2713</div></button>' +
+        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="react" role="option" onclick="wsSelectAgentMode(\'react\')"><div class="role-selection-item-icon-main">\ud83e\udd16</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModeReactNative') || 'Native ReAct mode') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModeReactNativeHint') || 'Classic single-agent ReAct with MCP tools') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="react">\u2713</div></button>' +
+        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="eino_single" role="option" onclick="wsSelectAgentMode(\'eino_single\')"><div class="role-selection-item-icon-main">\u26a1</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModeEinoSingle') || 'Eino single-agent (ADK)') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModeEinoSingleHint') || 'Eino ChatModelAgent + Runner') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="eino_single">\u2713</div></button>' +
+        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="deep" role="option" onclick="wsSelectAgentMode(\'deep\')"><div class="role-selection-item-icon-main">\ud83e\udde9</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModeDeep') || 'Deep (DeepAgent)') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModeDeepHint') || 'Eino DeepAgent with task sub-agent delegation') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="deep">\u2713</div></button>' +
+        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="plan_execute" role="option" onclick="wsSelectAgentMode(\'plan_execute\')"><div class="role-selection-item-icon-main">\ud83d\udccb</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModePlanExecuteLabel') || 'Plan-Execute') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModePlanExecuteHint') || 'Plan -> execute -> replan') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="plan_execute">\u2713</div></button>' +
+        '<button type="button" class="role-selection-item-main agent-mode-option ws-agent-mode-option" data-value="supervisor" role="option" onclick="wsSelectAgentMode(\'supervisor\')"><div class="role-selection-item-icon-main">\ud83c\udfaf</div><div class="role-selection-item-content-main"><div class="role-selection-item-name-main">' + (wsT('chat.agentModeSupervisorLabel') || 'Supervisor') + '</div><div class="role-selection-item-description-main">' + (wsT('chat.agentModeSupervisorHint') || 'Supervisor coordination with transfer-based sub-agent delegation') + '</div></div><div class="role-selection-checkmark-main agent-mode-check" data-agent-mode-check="supervisor">\u2713</div></button>' +
         '</div></div></div>' +
         '<input type="hidden" id="ws-agent-mode-select" value="react" autocomplete="off" />' +
         '</div>' +
@@ -2005,7 +2025,7 @@ function selectWebshell(id, stateReady) {
         '<label id="webshell-db-sqlite-row"><span>' + (wsT('webshell.dbSqlitePath') || 'SQLite 文件路径') + '</span><input id="webshell-db-sqlite-path" class="form-control" type="text" value="/tmp/test.db" /></label>' +
         '</div>' +
         '</div>' +
-        '<div class="modal-footer"><button type="button" class="btn-secondary" id="webshell-db-profile-cancel-btn">取消</button><button type="button" class="btn-primary" id="webshell-db-profile-save-btn">保存</button></div>' +
+        '<div class="modal-footer"><button type="button" class="btn-secondary" id="webshell-db-profile-cancel-btn">' + (wsT('common.cancel') || 'Cancel') + '</button><button type="button" class="btn-primary" id="webshell-db-profile-save-btn">' + (wsT('common.save') || 'Save') + '</button></div>' +
         '</div>' +
         '</div>' +
         '</section>' +
@@ -4365,9 +4385,9 @@ function refreshWebshellUIOnLanguageChange() {
             var dbProfileModalTitle = document.getElementById('webshell-db-profile-modal-title');
             if (dbProfileModalTitle) dbProfileModalTitle.textContent = wsT('webshell.editConnectionTitle') || '编辑连接';
             var dbProfileCancelBtn = document.getElementById('webshell-db-profile-cancel-btn');
-            if (dbProfileCancelBtn) dbProfileCancelBtn.textContent = '取消';
+            if (dbProfileCancelBtn) dbProfileCancelBtn.textContent = wsT('common.cancel') || 'Cancel';
             var dbProfileSaveBtn = document.getElementById('webshell-db-profile-save-btn');
-            if (dbProfileSaveBtn) dbProfileSaveBtn.textContent = '保存';
+            if (dbProfileSaveBtn) dbProfileSaveBtn.textContent = wsT('common.save') || 'Save';
             document.querySelectorAll('.webshell-db-profile-menu[data-action="edit"]').forEach(function (el) {
                 el.title = wsT('webshell.editConnection') || '编辑';
             });

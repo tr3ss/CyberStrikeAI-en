@@ -3,6 +3,17 @@ function _t(key, opts) {
     return typeof window.t === 'function' ? window.t(key, opts) : key;
 }
 
+function batchRoleDisplayName(roleOrName) {
+    if (typeof roleDisplayName === 'function') {
+        return roleDisplayName(roleOrName);
+    }
+    const name = typeof roleOrName === 'string' ? roleOrName : ((roleOrName && roleOrName.name) || '');
+    if (!name) return _t('batchImportModal.defaultRole') || 'Default';
+    const key = 'roles.builtinNames.' + name;
+    const translated = _t(key);
+    return translated && translated !== key ? translated : name;
+}
+
 /** 插值不转 HTML 实体（避免日期里的 / 变成 &#x2F; 再被 escapeHtml 成乱码） */
 function _tPlain(key, opts) {
     if (typeof window.t !== 'function') return key;
@@ -857,14 +868,14 @@ async function showBatchImportModal() {
                 const sortedRoles = loadedRoles.sort((a, b) => {
                     if (a.name === '默认') return -1;
                     if (b.name === '默认') return 1;
-                    return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+                    return batchRoleDisplayName(a).localeCompare(batchRoleDisplayName(b));
                 });
                 
                 sortedRoles.forEach(role => {
                     if (role.name !== '默认' && role.enabled !== false) {
                         const option = document.createElement('option');
                         option.value = role.name;
-                        option.textContent = role.name;
+                        option.textContent = batchRoleDisplayName(role);
                         roleSelect.appendChild(option);
                     }
                 });
@@ -2110,10 +2121,10 @@ function startInlineEditRole() {
     apiFetch(`/api/batch-tasks/${queueId}`).then(r => r.json()).then(detail => {
         const queue = detail.queue;
         const currentRole = queue.role || '';
-        const roles = (Array.isArray(batchQueuesState.loadedRoles) ? batchQueuesState.loadedRoles : []).filter(r => r.name !== '默认' && r.enabled !== false).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
+        const roles = (Array.isArray(batchQueuesState.loadedRoles) ? batchQueuesState.loadedRoles : []).filter(r => r.name !== '默认' && r.enabled !== false).sort((a, b) => batchRoleDisplayName(a).localeCompare(batchRoleDisplayName(b)));
         const currentInList = !currentRole || roles.some(r => r.name === currentRole);
-        const orphanOpt = !currentInList ? `<option value="${escapeHtml(currentRole)}" selected>${escapeHtml(currentRole)} (${escapeHtml(_t('batchQueueDetailModal.roleNotFound') || '已移除')})</option>` : '';
-        const opts = roles.map(r => `<option value="${escapeHtml(r.name)}" ${r.name === currentRole ? 'selected' : ''}>${escapeHtml(r.name)}</option>`).join('');
+        const orphanOpt = !currentInList ? `<option value="${escapeHtml(currentRole)}" selected>${escapeHtml(batchRoleDisplayName(currentRole))} (${escapeHtml(_t('batchQueueDetailModal.roleNotFound') || 'Removed')})</option>` : '';
+        const opts = roles.map(r => `<option value="${escapeHtml(r.name)}" ${r.name === currentRole ? 'selected' : ''}>${escapeHtml(batchRoleDisplayName(r))}</option>`).join('');
         container.innerHTML = `<span class="bq-inline-edit-controls">
             <select id="bq-edit-role">
                 <option value="">${escapeHtml(_t('batchImportModal.defaultRole'))}</option>

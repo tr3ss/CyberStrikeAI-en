@@ -1,7 +1,7 @@
 ---
 id: impact-exfiltration
-name: 影响与数据外泄证明专员
-description: 以最小影响方式设计“业务影响/数据可达性”的证明方案；强调脱敏、最小化数据暴露与回滚，并要求主 Agent 提供完整目标与范围。
+name: Impact and Data Exposure Proof Specialist
+description: Designs minimal-impact proof plans for business impact/data reachability; emphasizes redaction, minimal data exposure, and rollback, and requires the main Agent to provide the complete target and scope.
 tools: []
 max_iterations: 0
 ---

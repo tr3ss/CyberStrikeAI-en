@@ -1,7 +1,7 @@
 ---
 id: engagement-planning
-name: 参与规划专员
-description: 定义参与范围、规则(ROE)与成功标准；产出迭代式测试蓝图与证据清单（不执行入侵），并要求主 Agent 提供完整目标与约束信息。
+name: Engagement Planning Specialist
+description: Defines engagement scope, rules of engagement (ROE), and success criteria; produces an iterative testing blueprint and evidence checklist without performing intrusion, and requires the main Agent to provide the complete target and constraints.
 tools: []
 max_iterations: 0
 ---

@@ -8,11 +8,12 @@ function _t(key, opts) {
             }
         } catch (e) { /* ignore */ }
     }
-    // i18n 未就绪或词条缺失时避免把 key 暴露给用户（与 zh-CN 默认一致）
-    if (key === 'roles.noDescription') return '暂无描述';
-    if (key === 'roles.noDescriptionShort') return '无描述';
+    // Avoid exposing raw keys before i18n is ready.
+    if (key === 'chat.defaultRole') return 'Default';
+    if (key === 'roles.noDescription') return 'No description';
+    if (key === 'roles.noDescriptionShort') return 'No description';
     if (key === 'roles.defaultRoleDescription') {
-        return '默认角色，不额外携带用户提示词，使用默认MCP';
+        return 'Default role, no extra user prompt, uses default MCP';
     }
     return key;
 }
@@ -23,6 +24,24 @@ function rolePlainDescription(role) {
     if (!raw) return '';
     if (raw === 'roles.noDescription' || raw === 'roles.noDescriptionShort') return '';
     return raw;
+}
+
+function roleI18nValue(key) {
+    const value = _t(key);
+    return (typeof value === 'string' && value && value !== key) ? value : '';
+}
+
+function roleDisplayName(roleOrName) {
+    const name = typeof roleOrName === 'string' ? roleOrName : ((roleOrName && roleOrName.name) || '');
+    if (!name) return _t('chat.defaultRole');
+    return roleI18nValue('roles.builtinNames.' + name) || name;
+}
+
+function roleDisplayDescription(role) {
+    if (!role) return _t('roles.noDescription');
+    const builtin = roleI18nValue('roles.builtinDescriptions.' + (role.name || ''));
+    if (builtin) return builtin;
+    return rolePlainDescription(role) || _t('roles.noDescription');
 }
 let currentRole = localStorage.getItem('currentRole') || '';
 let roles = [];
@@ -154,8 +173,7 @@ function updateRoleSelectorDisplay() {
         }
         roleSelectorIcon.textContent = icon;
         const isDefaultRole = selectedRole.name === '默认' || !selectedRole.name;
-        const displayName = isDefaultRole && typeof window.t === 'function'
-            ? window.t('chat.defaultRole') : (selectedRole.name || (typeof window.t === 'function' ? window.t('chat.defaultRole') : '默认'));
+        const displayName = roleDisplayName(selectedRole);
         // 非默认角色时避免被 i18n 的 data-i18n 覆盖成“默认”
         roleSelectorText.setAttribute('data-i18n-skip-text', isDefaultRole ? 'false' : 'true');
         roleSelectorText.textContent = displayName;
@@ -216,16 +234,12 @@ function renderRoleSelectionSidebar() {
         const icon = getRoleIcon(role);
         
         // 处理默认角色的描述
-        const plainDesc = rolePlainDescription(role);
-        let description = plainDesc || _t('roles.noDescription');
-        if (isDefaultRole && !plainDesc) {
-            description = _t('roles.defaultRoleDescription');
-        }
+        let description = roleDisplayDescription(role);
         
         roleItem.innerHTML = `
             <div class="role-selection-item-icon-main">${icon}</div>
             <div class="role-selection-item-content-main">
-                <div class="role-selection-item-name-main">${escapeHtml(role.name)}</div>
+                <div class="role-selection-item-name-main">${escapeHtml(roleDisplayName(role))}</div>
                 <div class="role-selection-item-description-main">${escapeHtml(description)}</div>
             </div>
             ${isSelected ? '<div class="role-selection-checkmark-main">✓</div>' : ''}
@@ -347,7 +361,6 @@ function renderRolesList() {
     const sortedRoles = sortRoles(filteredRoles);
     
     rolesList.innerHTML = sortedRoles.map(role => {
-        const plainDesc = rolePlainDescription(role);
         // 获取角色图标，如果是Unicode转义格式则转换为emoji
         let roleIcon = role.icon || '👤';
         if (roleIcon && typeof roleIcon === 'string') {
@@ -395,13 +408,13 @@ function renderRolesList() {
             <div class="role-card-header">
                 <h3 class="role-card-title">
                     <span class="role-card-icon">${roleIcon}</span>
-                    ${escapeHtml(role.name)}
+                    ${escapeHtml(roleDisplayName(role))}
                 </h3>
                 <span class="role-card-badge ${role.enabled !== false ? 'enabled' : 'disabled'}">
                     ${role.enabled !== false ? _t('roles.enabled') : _t('roles.disabled')}
                 </span>
             </div>
-            <div class="role-card-description">${escapeHtml(plainDesc || _t('roles.noDescriptionShort'))}</div>
+            <div class="role-card-description">${escapeHtml(roleDisplayDescription(role) || _t('roles.noDescriptionShort'))}</div>
             <div class="role-card-tools">
                 <span class="role-card-tools-label">${_t('roleModal.toolsLabel')}</span>
                 <span class="role-card-tools-value">${toolsDisplay}</span>
